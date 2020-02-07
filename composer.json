@@ -1,0 +1,51 @@
+{
+    "name": "pkeidel/laralog",
+    "description": "Logs a lot of informations like events, database queries, cache access, memory usage and a lot more",
+    "keywords": [
+        "pkeidel",
+        "laralog"
+    ],
+    "homepage": "https://github.com/pkeidel/laralog",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "PKeidel",
+            "email": "pkeidel@ist-einmalig.de",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^7.1",
+        "illuminate/support": "^6.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^4.0",
+        "phpunit/phpunit": "^8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "PKeidel\\Laralog\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PKeidel\\Laralog\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "PKeidel\\Laralog\\LaralogServiceProvider"
+            ]
+        }
+    }
+}
