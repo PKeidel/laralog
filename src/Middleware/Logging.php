@@ -22,7 +22,6 @@ class Logging {
     private $esuser = null;
     private $espassword = null;
     private $uuid = null;
-    private $fallbackfile = null;
     private IOutput $output;
     private bool $sendLater = true;
 
@@ -30,7 +29,8 @@ class Logging {
     private $datacollection = null;
 
     public function __construct() {
-        $this->fallbackfile = storage_path('logs/elasticsearch_bulk.log.gz9');
+        $this->sendLater = config('laralog.sendlater', true);
+        $this->uuid = uniqid();
     }
 
     public static function currentTS() {
@@ -80,8 +80,13 @@ class Logging {
     }
 
     public function terminate($request, $response) {
-        if($this->sendLater)
-            $this->log($request, $response);
+
+        if(!$this->isEnabled() || !$this->sendLater) {
+            return;
+        }
+
+        $this->datacollection = resolve('pklaralog');
+        $this->log($request, $response);
     }
 
     private function log($request, $response) {
@@ -111,28 +116,28 @@ class Logging {
         foreach($sqls as $arr) {
             $sqlStats['totalTime'] += $arr['duration'];
             $arr = $this->getEnrichedData('sql', $arr);
-            $this->output->prepareData('sql', $arr);
+            $this->output->prepareData('sql', $arr, $this->uuid);
         }
 
         // 'cacheevents' zu eigenen Objekten machen
         $cacheevents = $this->cleanUpCollectionAndGet('cacheevents');
         foreach($cacheevents as $arr) {
             $arr = $this->getEnrichedData('cacheevent', $arr);
-            $this->output->prepareData('cacheevent', $arr);
+            $this->output->prepareData('cacheevent', $arr, $this->uuid);
         }
 
         // 'allevents' zu eigenen Objekten machen
         $allevents = $this->cleanUpCollectionAndGet('allevents');
         foreach($allevents as $arr) {
             $arr = $this->getEnrichedData('event', $arr);
-            $this->output->prepareData('event', $arr);
+            $this->output->prepareData('event', $arr, $this->uuid);
         }
 
         // 'errors' zu eigenen Objekten machen
         $allerrors = $this->cleanUpCollectionAndGet('errors');
         foreach($allerrors as $arr) {
             $arr = $this->getEnrichedData('error', $arr);
-            $this->output->prepareData('error', $arr);
+            $this->output->prepareData('error', $arr, $this->uuid);
         }
 
         $this->datacollection->put('stats', [
@@ -140,9 +145,8 @@ class Logging {
         ]);
 
         $arr = $this->getEnrichedData('request', $this->datacollection->toArray());
-        $this->output->prepareData('request', $arr);
+        $this->output->prepareData('request', $arr, $this->uuid);
         $this->output->send();
-//        $this->sendPrepared();
     }
 
     private function registerSingletons() {
@@ -298,14 +302,14 @@ class Logging {
 
     private function saveQuery($data) {
         $this->datacollection->get('sql')->push([
-            'time'       => self::currentTS(),
-            'sql'        => $data->sql,
-            'bindingsorig' => (array) $data->bindings,
-            'queryType'  => strtoupper(Arr::first(explode(' ', $data->sql))),
-            'duration'   => floatval($data->time),
-            'caller'     => $this->getCaller(),
-            'model'      => $this->datacollection->get('lastmodel'),
-            'hash'       => $this->datacollection->get('hash'),
+            'time'         => self::currentTS(),
+            'sql'          => $data->sql,
+            'bindingsorig' => array_map(fn($v) => (string)$v, $data->bindings ?? []) ?? [],
+            'queryType'    => strtoupper(Arr::first(explode(' ', $data->sql))),
+            'duration'     => floatval($data->time),
+            'caller'       => $this->getCaller(),
+            'model'        => $this->datacollection->get('lastmodel'),
+            'hash'         => $this->datacollection->get('hash'),
         ]);
     }
 

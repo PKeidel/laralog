@@ -3,7 +3,7 @@
     "index_patterns" : [
         "laravel-*"
     ],
-    "mapping": {
+    "mappings": {
         "dynamic_templates": [
             {
                 "strings": {
@@ -21,78 +21,11 @@
             }
         ],
         "properties": {
-            "appname": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "appurl": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
             "bindingsCount": {
                 "type": "long"
             },
             "caller": {
-                "properties": {
-                    "class": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    },
-                    "file": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    },
-                    "function": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    },
-                    "line": {
-                        "type": "long"
-                    },
-                    "type": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    }
-                }
-            },
-            "cleanQuery": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
+                "type": "object"
             },
             "counter": {
                 "properties": {
@@ -188,24 +121,6 @@
                     "auditable_id": {
                         "type": "long"
                     },
-                    "auditable_type": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    },
-                    "event": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    },
                     "ip_address": {
                         "type": "text",
                         "fields": {
@@ -227,181 +142,18 @@
             "duration": {
                 "type": "float"
             },
-            "event": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "eventorig": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "exception": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "host": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "ip": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "key": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "message": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "method": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "model": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "query": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "queryType": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
             "request": {
                 "properties": {
                     "headers": {
-                        "properties": {
-                            "host": {
-                                "type": "text",
-                                "fields": {
-                                    "raw": {
-                                        "type": "keyword",
-                                        "ignore_above": 256
-                                    }
-                                }
-                            },
-                            "user-agent": {
-                                "type": "text",
-                                "fields": {
-                                    "raw": {
-                                        "type": "keyword",
-                                        "ignore_above": 256
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "host": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
+                        "type": "object"
                     },
                     "ip": {
                         "type": "ip"
-                    },
-                    "method": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    },
-                    "route": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    },
-                    "uri": {
-                        "type": "text",
-                        "fields": {
-                            "raw": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
                     },
                     "user": {
                         "properties": {
                             "id": {
                                 "type": "long"
-                            },
-                            "username": {
-                                "type": "text",
-                                "fields": {
-                                    "raw": {
-                                        "type": "keyword",
-                                        "ignore_above": 256
-                                    }
-                                }
                             }
                         }
                     }
@@ -411,15 +163,6 @@
                 "properties": {
                     "status": {
                         "type": "long"
-                    }
-                }
-            },
-            "route": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
                     }
                 }
             },
@@ -437,51 +180,6 @@
             "time": {
                 "type": "date",
                 "format": "epoch_second"
-            },
-            "type": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "ua": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "uri": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "user": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
-            "uuid": {
-                "type": "text",
-                "fields": {
-                    "raw": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
             }
         }
     }

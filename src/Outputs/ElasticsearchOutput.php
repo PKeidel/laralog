@@ -8,17 +8,15 @@ use Illuminate\Support\Facades\Log;
 
 class ElasticsearchOutput implements IOutput {
 
-    private $esurl = null;
-    private $esuser = null;
-    private $espassword = null;
-    private $uuid = null;
+    private $esurl;
+    private $esuser;
+    private $espassword;
     private string $bulk = '';
 
     public function __construct() {
         $this->esurl = config("laralog.elasticsearch.url");
         $this->esuser = config("laralog.elasticsearch.username");
         $this->espassword = config("laralog.elasticsearch.password");
-        $this->uuid = uniqid();
     }
 
     private function getIndexName() {
@@ -30,9 +28,9 @@ class ElasticsearchOutput implements IOutput {
         return preg_replace("/[^0-9a-z-.]/", "", $index);
     }
 
-    public function prepareData(string $type, array $data) {
+    public function prepareData(string $type, array $data, string $uuid) {
         $data['type'] = $type;
-        $data['uuid'] = $this->uuid;
+        $data['uuid'] = $uuid;
         $index = $this->getIndexName();
 
         $this->bulk .= "{\"index\" : { \"_index\" : \"$index\", \"_type\" : \"_doc\"}}\n";
@@ -40,6 +38,9 @@ class ElasticsearchOutput implements IOutput {
     }
 
     public function send() {
+        if(!strlen(trim($this->bulk)))
+            return;
+
         $jsonBody = $this->sendBody('/_bulk', $this->bulk);
         if(!is_object($jsonBody) || $jsonBody->errors) {
             Log::error("ES URL: $this->esurl");
@@ -50,6 +51,7 @@ class ElasticsearchOutput implements IOutput {
                 }
             }
         }
+        $this->bulk = '';
     }
 
     public function sendBody(string $url, string $body) {

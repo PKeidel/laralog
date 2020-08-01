@@ -16,6 +16,23 @@ You can install the package via composer:
 composer require pkeidel/laralog
 ```
 
+## Configuration
+Add these values to your .env file:
+```bash
+LARALOG_ENABLED=true
+LARALOG_ES_HOST=https://es01.example.com
+LARALOG_ES_INDEX=myindex
+LARALOG_ES_USERNAME=abcdefghi
+LARALOG_ES_PASSWORD=!top5scr3t!
+```
+
+Or get the config/laralog.php file and modify it there.
+For example to  
+```bash
+php artisan vendor:publish --tag=config --provider="PKeidel\Laralog\LaralogServiceProvider"```
+```
+
+
 ## Log exceptions
 
 Simply add this to `app/Exceptions/Handler::report(Exception $exception)`:
@@ -40,4 +57,4 @@ $pklaralog->get('errors')->push([
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE) for more information.
+The MIT License (MIT)
