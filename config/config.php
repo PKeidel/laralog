@@ -12,7 +12,7 @@ return [
     // supported:
     'enrichers' => [
         'sql' => [
-            PKeidel\laralog\src\Enrichers\SqlCleanQueryEnricher::class,
+            PKeidel\Laralog\Enrichers\SqlCleanQueryEnricher::class,
         ],
         'request' => [],
         'stats' => [],

@@ -3,7 +3,7 @@
 namespace PKeidel\Laralog;
 
 use Illuminate\Support\ServiceProvider;
-use PKeidel\laralog\src\Commands\LaralogInstallElasticsearch;
+use PKeidel\Laralog\Commands\LaralogInstallElasticsearch;
 
 class LaralogServiceProvider extends ServiceProvider {
     /**

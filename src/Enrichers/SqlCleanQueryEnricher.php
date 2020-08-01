@@ -1,6 +1,6 @@
 <?php
 
-namespace PKeidel\laralog\src\Enrichers;
+namespace PKeidel\Laralog\Enrichers;
 
 
 class SqlCleanQueryEnricher implements ILaralogEnricher {

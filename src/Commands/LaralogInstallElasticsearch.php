@@ -1,10 +1,10 @@
 <?php
 
-namespace PKeidel\laralog\src\Commands;
+namespace PKeidel\Laralog\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use PKeidel\laralog\src\Outputs\ElasticsearchOutput;
+use PKeidel\Laralog\Outputs\ElasticsearchOutput;
 
 class LaralogInstallElasticsearch extends Command {
     protected $signature = 'es:install';

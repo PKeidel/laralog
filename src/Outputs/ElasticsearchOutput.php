@@ -1,6 +1,6 @@
 <?php
 
-namespace PKeidel\laralog\src\Outputs;
+namespace PKeidel\Laralog\Outputs;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\RequestOptions;

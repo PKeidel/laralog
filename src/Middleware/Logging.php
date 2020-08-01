@@ -9,12 +9,11 @@ use GuzzleHttp\RequestOptions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
-use PKeidel\laralog\src\Enrichers\ILaralogEnricher;
-use PKeidel\laralog\src\Outputs\ElasticsearchOutput;
-use PKeidel\laralog\src\Outputs\IOutput;
+use PKeidel\Laralog\Enrichers\ILaralogEnricher;
+use PKeidel\Laralog\Outputs\ElasticsearchOutput;
+use PKeidel\Laralog\Outputs\IOutput;
 
 class Logging {
 

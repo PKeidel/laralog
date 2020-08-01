@@ -3,7 +3,7 @@
 namespace PKeidel\Laralog\Tests;
 
 use PHPUnit\Framework\TestCase;
-use PKeidel\laralog\src\Enrichers\SqlCleanQueryEnricher;
+use PKeidel\Laralog\Enrichers\SqlCleanQueryEnricher;
 
 class SqlCleanQueryEnricherTest extends TestCase {
 

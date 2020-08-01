@@ -4,7 +4,7 @@ namespace PKeidel\Laralog\Tests;
 
 use Carbon\Carbon;
 use PHPUnit\Framework\TestCase;
-use PKeidel\laralog\src\Enrichers\SqlFilledQueryEnricher;
+use PKeidel\Laralog\Enrichers\SqlFilledQueryEnricher;
 
 class SqlFilledQueryEnricherTest extends TestCase {
 
