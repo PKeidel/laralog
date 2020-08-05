@@ -34,9 +34,13 @@ class SqlFilledQueryEnricher implements ILaralogEnricher {
         }
 
         return [
-            'query' => $sql,
-            'bindings' => $strParams,
-            'bindingsCount' => count($strParams),
+            'enriched' => [
+                'filledQuery' => [
+                    'query' => $sql,
+                    'bindings' => $strParams,
+                    'bindingsCount' => count($strParams),
+                ]
+            ]
         ];
     }
 }

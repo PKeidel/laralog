@@ -13,6 +13,7 @@ return [
     'enrichers' => [
         'sql' => [
             PKeidel\Laralog\Enrichers\SqlCleanQueryEnricher::class,
+            PKeidel\Laralog\Enrichers\SqlFilledQueryEnricher::class,
         ],
         'request' => [],
         'stats' => [],

@@ -67,6 +67,23 @@ class ElasticsearchOutput implements IOutput {
             return json_decode($response->getBody());
         } catch (\Exception $e) {
             Log::error($e->getMessage());
+            echo "ERROR: " . $e->getMessage() . "\n";
+        }
+    }
+
+    public function delete(string $url) {
+        try {
+            $url = "{$this->esurl}{$url}";
+            $client = new Client(['verify' => false]);
+            $response = $client->delete($url, [
+                RequestOptions::AUTH => [$this->esuser, $this->espassword],
+                RequestOptions::HEADERS => ['Content-Type' => 'application/json'],
+            ]);
+
+            return json_decode($response->getBody());
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            echo "ERROR: " . $e->getMessage() . "\n";
         }
     }
 }

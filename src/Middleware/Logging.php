@@ -171,13 +171,17 @@ class Logging {
     private function getEnrichedData(string $type, array $json): array {
         $enricherClasses = config("laralog.enrichers.$type");
 
-        if(is_array($enricherClasses) && count($enricherClasses)) {
+        if(is_array($enricherClasses) && count($enricherClasses) && is_array($enrichers = config("laralog.enrichers.$type"))) {
             // run registered enrichers
-            foreach(config("laralog.enrichers.$type") as $enricherClass) {
-                /** @var ILaralogEnricher $enricher */
-                $enricher = new $enricherClass();
-                $extraData = $enricher->enrichFrom($json);
-                $json = array_merge($json, $extraData);
+            foreach($enrichers as $enricherClass) {
+                try {
+                    /** @var ILaralogEnricher $enricher */
+                    $enricher = new $enricherClass();
+                    $extraData = $enricher->enrichFrom($json);
+                    $json = array_merge_recursive($json, $extraData);
+                } catch (\Throwable $t) {
+                    // ignore
+                }
             }
         }
 

@@ -22,7 +22,11 @@ class SqlCleanQueryEnricher implements ILaralogEnricher {
             }
 
             return [
-                'cleanQuery' => $query
+                'enriched' => [
+                    'cleanQuery' => [
+                        'query' => $query,
+                    ]
+                ]
             ];
     }
 }

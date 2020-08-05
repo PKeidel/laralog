@@ -22,11 +22,13 @@ class LaralogInstallElasticsearch extends Command {
     }
 
     public function handle() {
-        $pathToESMappingJson = File::exists(base_path(__FILE__.'/../../assets/es-mapping.json'))
-                                   ? base_path(__FILE__.'/../../assets/es-mapping.json')
-                                   : app_path(__FILE__.'/../../assets/es-mapping.json');
+        $pathToESMappingJson = File::exists(base_path('storage/es-mapping.json'))
+                                   ? base_path('storage/es-mapping.json')
+                                   : __DIR__.'/../../assets/es-mapping.json';
+        $pathToESMappingJson = realpath($pathToESMappingJson);
 
-        $es = new ElasticsearchOutput();
+        $es  = new ElasticsearchOutput();
+        $es->delete('/_template/template_laravel');
         $es->sendBody('/_template/template_laravel', File::get($pathToESMappingJson));
     }
 }

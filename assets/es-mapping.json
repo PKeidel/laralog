@@ -21,8 +21,46 @@
             }
         ],
         "properties": {
-            "bindingsCount": {
-                "type": "long"
+            "enriched": {
+                "properties": {
+                    "cleanQuery": {
+                        "properties": {
+                            "query": {
+                                "type": "text",
+                                "fields": {
+                                    "keyword": {
+                                        "type": "keyword",
+                                        "ignore_above": 12288
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "filledQuery": {
+                        "properties": {
+                            "query": {
+                                "type": "text",
+                                "fields": {
+                                    "keyword": {
+                                        "type": "keyword",
+                                        "ignore_above": 12288
+                                    }
+                                }
+                            },
+                            "bindings": {
+                                "type": "text",
+                                "fields": {
+                                    "keyword": {
+                                        "type": "keyword"
+                                    }
+                                }
+                            },
+                            "bindingsCount": {
+                                "type": "long"
+                            }
+                        }
+                    }
+                }
             },
             "caller": {
                 "type": "object"
