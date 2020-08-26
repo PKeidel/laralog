@@ -11,7 +11,7 @@ class ElasticsearchOutput implements IOutput {
     private $esurl;
     private $esuser;
     private $espassword;
-    private string $bulk = '';
+    private $bulk = '';
 
     public function __construct() {
         $this->esurl = config("laralog.elasticsearch.url");
@@ -45,9 +45,11 @@ class ElasticsearchOutput implements IOutput {
         if(!is_object($jsonBody) || $jsonBody->errors) {
             Log::error("ES URL: $this->esurl");
 
-            foreach($jsonBody->items as $idx => $itm) {
-                if($itm->index->status !== 201) {
-                    Log::error("$idx: ".json_encode($itm));
+            if(isset($jsonBody->items)) {
+                foreach($jsonBody->items as $idx => $itm) {
+                    if(($itm->index->status ?? 500) !== 201) { // 201 => created
+                        Log::error("$idx: ".json_encode($itm));
+                    }
                 }
             }
         }
@@ -66,8 +68,7 @@ class ElasticsearchOutput implements IOutput {
 
             return json_decode($response->getBody());
         } catch (\Exception $e) {
-            Log::error($e->getMessage());
-            echo "ERROR: " . $e->getMessage() . "\n";
+            return (object) ['errors' => true, 'items' => [$e->getMessage()]];
         }
     }
 

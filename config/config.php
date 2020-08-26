@@ -15,7 +15,10 @@ return [
             PKeidel\Laralog\Enrichers\SqlCleanQueryEnricher::class,
             PKeidel\Laralog\Enrichers\SqlFilledQueryEnricher::class,
         ],
-        'request' => [],
+        'request' => [
+            PKeidel\Laralog\Enrichers\RequestOpcacheInfoEnricher::class,
+            PKeidel\Laralog\Enrichers\RequestApcuInfoEnricher::class,
+        ],
         'stats' => [],
         'errors' => [],
         'cacheevents' => [],

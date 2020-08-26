@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\File;
 use PKeidel\Laralog\Outputs\ElasticsearchOutput;
 
 class LaralogInstallElasticsearch extends Command {
-    protected $signature = 'es:install';
+    protected $signature = 'laralog:es:install';
     protected $description = 'Creates the template for the index in elasticserach and adds a Kibana Dashboard with some charts';
 
     private $esurl;
@@ -28,7 +28,9 @@ class LaralogInstallElasticsearch extends Command {
         $pathToESMappingJson = realpath($pathToESMappingJson);
 
         $es  = new ElasticsearchOutput();
-        $es->delete('/_template/template_laravel');
-        $es->sendBody('/_template/template_laravel', File::get($pathToESMappingJson));
+        $this->info("Deleting existing template ...");
+        $es->delete('_template/template_laravel');
+        $this->info("Creating new template ...");
+        $es->sendBody('_template/template_laravel', File::get($pathToESMappingJson));
     }
 }

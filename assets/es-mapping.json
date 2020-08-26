@@ -3,6 +3,12 @@
     "index_patterns" : [
         "laravel-*"
     ],
+    "settings": {
+      "index": {
+        "number_of_shards": "1",
+        "number_of_replicas": "0"
+      }
+    },
     "mappings": {
         "dynamic_templates": [
             {
@@ -217,7 +223,7 @@
             },
             "time": {
                 "type": "date",
-                "format": "epoch_second"
+                "format": "epoch_millis"
             }
         }
     }

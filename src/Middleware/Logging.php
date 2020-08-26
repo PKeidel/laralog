@@ -33,7 +33,7 @@ class Logging {
     }
 
     public static function currentTS() {
-        return round(microtime(true), 3);
+        return round(microtime(true), 3) * 1000;
     }
 
     private function isEnabled() {
@@ -57,7 +57,7 @@ class Logging {
 
         $response = $next($request);
         $response->headers->set('X-UUID', $this->uuid);
-        $this->datacollection->put('duration', round((self::currentTS() - $this->datacollection->pull('start')) * 1000));
+        $this->datacollection->put('duration', self::currentTS() - $this->datacollection->pull('start'));
 
         if(!$this->sendLater)
             $this->log($request, $response);
