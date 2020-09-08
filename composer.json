@@ -11,13 +11,13 @@
     "authors": [
         {
             "name": "PKeidel",
-            "email": "pkeidel@ist-einmalig.de",
+            "email": "pkeidel@sags-per-mail.de",
             "role": "Developer"
         }
     ],
     "require": {
         "php": "^7.3",
-        "illuminate/support": "^7.0"
+        "illuminate/support": "^7.0 | ^8.0"
     },
     "require-dev": {
         "orchestra/testbench": "^4.0",
