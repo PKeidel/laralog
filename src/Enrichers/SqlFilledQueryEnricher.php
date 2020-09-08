@@ -20,8 +20,8 @@ class SqlFilledQueryEnricher implements ILaralogEnricher {
             $v = array_shift($params);
             if(is_string($v))
                 $v = "'$v'";
-            elseif($v !== NULL && !is_numeric($v) && !is_bool($v) && get_class($v) === \DateTime::class) {
-                /** @var \DateTime $v */
+            elseif(is_object($v) && method_exists($v, 'format')) {
+                /** @var \DateTime|\Carbon\Carbon $v */
                 $v = "'".$v->format('Y-m-d H:i:s')."'";
             }
             $strParams[] = trim((string) $v, "\"'");

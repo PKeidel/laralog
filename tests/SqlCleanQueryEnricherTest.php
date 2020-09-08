@@ -10,7 +10,7 @@ class SqlCleanQueryEnricherTest extends TestCase {
     private function run_enricher($sql) {
         $scqe = new SqlCleanQueryEnricher();
         $arr = $scqe->enrichFrom(['sql' => $sql]);
-        return $arr['cleanQuery'];
+        return $arr['enriched']['cleanQuery']['query'];
     }
 
     /** @test */

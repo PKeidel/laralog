@@ -11,12 +11,19 @@ class ElasticsearchOutput implements IOutput {
     private $esurl;
     private $esuser;
     private $espassword;
+    private $espipeline;
+    private $esbulkurlappendix = '';
     private $bulk = '';
 
     public function __construct() {
         $this->esurl = config("laralog.elasticsearch.url");
         $this->esuser = config("laralog.elasticsearch.username");
         $this->espassword = config("laralog.elasticsearch.password");
+        $this->espipeline = config("laralog.elasticsearch.pipeline");
+
+        if(($pipeline = config("laralog.elasticsearch.pipeline")) !== NULL) {
+            $this->esbulkurlappendix = "?pipeline=$pipeline";
+        }
     }
 
     private function getIndexName() {
@@ -41,7 +48,7 @@ class ElasticsearchOutput implements IOutput {
         if(!strlen(trim($this->bulk)))
             return;
 
-        $jsonBody = $this->sendBody('/_bulk', $this->bulk);
+        $jsonBody = $this->sendBody('/_bulk' . $this->esbulkurlappendix, $this->bulk);
         if(!is_object($jsonBody) || $jsonBody->errors) {
             Log::error("ES URL: $this->esurl");
 

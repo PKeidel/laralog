@@ -33,5 +33,6 @@ return [
         'index' => env('LARALOG_ES_INDEX'),
         'username' => env('LARALOG_ES_USERNAME'),
         'password' => env('LARALOG_ES_PASSWORD'),
+        'pipeline' => env('LARALOG_ES_PIPELINE'),
     ]
 ];
