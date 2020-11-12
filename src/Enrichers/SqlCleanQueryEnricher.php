@@ -14,19 +14,20 @@ class SqlCleanQueryEnricher implements ILaralogEnricher {
      * @return array
      */
     public function enrichFrom(array $data): array {
-            $query = preg_replace("/([0-9]+)/", '?', $data['sql']);
-            $query = preg_replace("/[iI][nN] \((?:\?,? ?)+\)/", 'in (?)', $query);
-            $query = strtolower($query);
-            foreach(['select ','from ','insert into ','update ','delete ',' and ',' or ',' as ',' is ','null','left join ','where ','group by ','order by ','limit '] as $keyword) {
-                $query = preg_replace("/$keyword/", strtoupper($keyword), $query);
-            }
+        $query = preg_replace("/('[^']+')/", '?', $data['sql']);   // replace strings
+        $query = preg_replace("/([0-9.]+)/", '?', $query);    // replace numbers
+        $query = preg_replace("/[iI][nN] \((?:\?,? ?)+\)/", 'in (?)', $query);
+        $query = strtolower($query);
+        foreach(['select ','from ','insert into ','update ','delete ',' and ',' or ',' as ',' is ','null','left join ','where ','group by ','order by ','limit '] as $keyword) {
+            $query = preg_replace("/$keyword/", strtoupper($keyword), $query);
+        }
 
-            return [
-                'enriched' => [
-                    'cleanQuery' => [
-                        'query' => $query,
-                    ]
+        return [
+            'enriched' => [
+                'cleanQuery' => [
+                    'query' => $query,
                 ]
-            ];
+            ]
+        ];
     }
 }
