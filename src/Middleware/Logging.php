@@ -2,10 +2,7 @@
 
 namespace PKeidel\Laralog\Middleware;
 
-use App\Eve42Helper;
 use Closure;
-use GuzzleHttp\Client;
-use GuzzleHttp\RequestOptions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +20,8 @@ class Logging {
     private $uuid = null;
     private IOutput $output;
     private bool $sendLater = true;
+
+    private bool $isSending = false;
 
     /** @var \Illuminate\Support\Collection */
     private $datacollection = null;
@@ -145,6 +144,7 @@ class Logging {
 
         $arr = $this->getEnrichedData('request', $this->datacollection->toArray());
         $this->output->prepareData('request', $arr, $this->uuid);
+        $this->isSending = true;
         $this->output->send();
     }
 
@@ -155,6 +155,8 @@ class Logging {
                 'uuid'              => $this->uuid,
                 'appurl'            => config('app.url'),
                 'appname'           => config('app.name'),
+                'appenv'            => config('app.env'),
+                'appdebug'          => config('app.debug'),
                 'counter'           => collect(),
                 'request'           => collect(),
                 'sql'               => collect(),
@@ -162,6 +164,7 @@ class Logging {
                 'cacheevents'       => collect(),
                 'lastmodel'         => '',
                 'allevents'         => collect(),
+                'logs'              => collect(),
                 'errors'            => collect()
             ]);
         });
@@ -190,6 +193,10 @@ class Logging {
 
     private function registerListeners() {
         Event::listen('*', function($eventName, $data) {
+
+            if($this->isSending)
+                return;
+
             $caller = $this->getCaller();
 
             $eventNameOrig = $eventName;
@@ -352,6 +359,8 @@ class Logging {
             $obj['hash']    = $this->datacollection->get('hash');
             $obj['appname'] = $this->datacollection->get('appname');
             $obj['appurl']  = $this->datacollection->get('appurl');
+            $obj['appenv'] = $this->datacollection->get('appenv');
+            $obj['appdebug']  = $this->datacollection->get('appdebug');
             $obj['request'] = [
                 'uri'    => $this->datacollection->get('request')->get('uri'),
                 'host'   => $this->datacollection->get('request')->get('host'),

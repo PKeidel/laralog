@@ -15,7 +15,8 @@ class SqlCleanQueryEnricher implements ILaralogEnricher {
      */
     public function enrichFrom(array $data): array {
         $query = preg_replace("/('[^']+')/", '?', $data['sql']);   // replace strings
-        $query = preg_replace("/([0-9.]+)/", '?', $query);    // replace numbers
+        $query = preg_replace("/([0-9][0-9.]+)/", '?', $query);    // replace decimal numbers
+        $query = preg_replace("/([0-9]+)/", '?', $query);    // replace numbers
         $query = preg_replace("/[iI][nN] \((?:\?,? ?)+\)/", 'in (?)', $query);
         $query = strtolower($query);
         foreach(['select ','from ','insert into ','update ','delete ',' and ',' or ',' as ',' is ','null','left join ','where ','group by ','order by ','limit '] as $keyword) {
