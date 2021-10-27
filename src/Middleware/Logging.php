@@ -4,31 +4,46 @@ namespace PKeidel\Laralog\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use PKeidel\Laralog\Enrichers\ILaralogEnricher;
-use PKeidel\Laralog\Outputs\ElasticsearchOutput;
 use PKeidel\Laralog\Outputs\IOutput;
+use PKeidel\Laralog\Outputs\OutputManager;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Auth\Events\Authenticated;
+use Illuminate\Database\Events\StatementPrepared;
+use Illuminate\Cache\Events\CacheHit;
+use Illuminate\Cache\Events\CacheMissed;
+use Illuminate\Cache\Events\KeyForgotten;
+use Illuminate\Cache\Events\KeyWritten;
+use Illuminate\Database\Events\QueryExecuted;
+use Symfony\Component\HttpFoundation\HeaderBag;
 
 class Logging {
 
-    private $esurl = null;
-    private $esuser = null;
-    private $espassword = null;
-    private $uuid = null;
+    private string $requestId;
     private IOutput $output;
-    private bool $sendLater = true;
+    private bool $sendLater;
 
-    private bool $isSending = false;
+    public const KEY_SQL = 'sql';
+    public const KEY_CACHEEVENT = 'cacheevent';
+    public const KEY_EVENT = 'event';
+    public const KEY_ERROR = 'error';
+    public const KEY_LOG = 'log';
+    public const KEY_REQUEST = 'request';
+    public const KEY_RESPONSE = 'response';
+    public const KEY_STAT = 'stat';
 
-    /** @var \Illuminate\Support\Collection */
-    private $datacollection = null;
+    private static array $datacollection = [];
 
     public function __construct() {
         $this->sendLater = config('laralog.sendlater', true);
-        $this->uuid = uniqid();
+        $this->requestId = bin2hex(random_bytes(5));
+        $this->output = new OutputManager();
     }
 
     public static function currentTS() {
@@ -42,160 +57,107 @@ class Logging {
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
+     * @param Request $request
+     * @param Closure $next
      * @return mixed
      */
     public function handle(Request $request, Closure $next) {
-
         if(!$this->isEnabled()) {
             return $next($request);
         }
 
-        $this->prepareDataCollecting($request);
+        $this->createEmptyCollectionArray();
+        $this->registerListeners();
 
         $response = $next($request);
-        $response->headers->set('X-UUID', $this->uuid);
-        $this->datacollection->put('duration', self::currentTS() - $this->datacollection->pull('start'));
+        $response->headers->set('X-REQID', $this->requestId);
+        static::$datacollection[static::KEY_REQUEST]['duration'] = static::currentTS() - static::$datacollection['start'];
 
-        if(!$this->sendLater)
+        if(!$this->sendLater) {
             $this->log($request, $response);
+        }
 
         return $response;
     }
 
-    public function prepareDataCollecting(Request $request) {
-        $this->datacollection = $this->registerSingletons();
-        $this->datacollection->put('start', self::currentTS());
-        $this->registerListeners();
-
-        $method = $request->getMethod();
-        $uri    = $request->server('REQUEST_URI');
-        $host   = $request->server('SERVER_NAME');
-        $this->datacollection->get('request')->put('host', $host);
-        $this->datacollection->get('request')->put('uri', $uri);
-        $this->datacollection->get('request')->put('method', $method);
+    public function createEmptyCollectionArray(): void {
+        static::$datacollection = [
+            'start' => static::currentTS(),
+        ];
     }
 
-    public function terminate($request, $response) {
-
-        if(!$this->isEnabled() || !$this->sendLater) {
+    public function terminate($request, $response): void {
+        if(!$this->sendLater || !$this->isEnabled()) {
             return;
         }
 
-        $this->datacollection = resolve('pklaralog');
         $this->log($request, $response);
     }
 
-    private function log($request, $response) {
-        $this->datacollection->put('stats', [
-            'memory' => memory_get_peak_usage(true),
-        ]);
-
-        $outputType = config("laralog.output.type");
-
-        if($outputType === 'elasticsearch') {
-            $this->output = new ElasticsearchOutput();
-        } else {
-            Log::alert("Laralog::Logging Output '$outputType' is not known. Data can not be logged.");
-            return;
-        }
+    private function log(Request $request, Response $response): void {
+        $this->setupOutputs();
 
         // Save request to singleton
-        $this->saveRequestToSingleton($request);
+        $this->saveRequest($request);
+        $this->saveResponse($response);
+        $this->saveStats();
 
-        $this->datacollection->put('response', [
-            'status' => $response->getStatusCode(),
-        ]);
-
-        // 'sql' zu eigenen Objekten machen
-        $sqls = $this->cleanUpCollectionAndGet('sql');
-        $sqlStats = ['totalTime' => 0];
-        foreach($sqls as $arr) {
-            $sqlStats['totalTime'] += $arr['duration'];
-            $arr = $this->getEnrichedData('sql', $arr);
-            $this->output->prepareData('sql', $arr, $this->uuid);
+        foreach([static::KEY_SQL, static::KEY_CACHEEVENT, static::KEY_EVENT, static::KEY_ERROR, static::KEY_LOG] as $key) {
+            // '$key' to stand-alone log objects
+            $data = $this->cleanUpCollectionAndGet($key);
+            foreach($data as $arr) {
+                $this->prepareData($key, $arr, $request);
+            }
         }
 
-        // 'cacheevents' zu eigenen Objekten machen
-        $cacheevents = $this->cleanUpCollectionAndGet('cacheevents');
-        foreach($cacheevents as $arr) {
-            $arr = $this->getEnrichedData('cacheevent', $arr);
-            $this->output->prepareData('cacheevent', $arr, $this->uuid);
+        foreach([static::KEY_STAT, static::KEY_REQUEST, static::KEY_RESPONSE] as $key) {
+            // '$key' to stand-alone log objects
+            $arr = $this->cleanUpCollectionAndGet($key);
+            $this->prepareData($key, $arr, $request);
         }
 
-        // 'allevents' zu eigenen Objekten machen
-        $allevents = $this->cleanUpCollectionAndGet('allevents');
-        foreach($allevents as $arr) {
-            $arr = $this->getEnrichedData('event', $arr);
-            $this->output->prepareData('event', $arr, $this->uuid);
-        }
-
-        // 'errors' zu eigenen Objekten machen
-        $allerrors = $this->cleanUpCollectionAndGet('errors');
-        foreach($allerrors as $arr) {
-            $arr = $this->getEnrichedData('error', $arr);
-            $this->output->prepareData('error', $arr, $this->uuid);
-        }
-
-        $this->datacollection->put('stats', [
-            'sql' => $sqlStats,
-        ]);
-
-        $arr = $this->getEnrichedData('request', $this->datacollection->toArray());
-        $this->output->prepareData('request', $arr, $this->uuid);
-        $this->isSending = true;
         $this->output->send();
     }
 
-    private function registerSingletons() {
-        app()->singleton('pklaralog', function () {
-            return collect([
-                'time'              => self::currentTS(),
-                'uuid'              => $this->uuid,
-                'appurl'            => config('app.url'),
-                'appname'           => config('app.name'),
-                'appenv'            => config('app.env'),
-                'appdebug'          => config('app.debug'),
-                'counter'           => collect(),
-                'request'           => collect(),
-                'sql'               => collect(),
-                'events'            => collect(),
-                'cacheevents'       => collect(),
-                'lastmodel'         => '',
-                'allevents'         => collect(),
-                'logs'              => collect(),
-                'errors'            => collect()
-            ]);
-        });
-        return resolve('pklaralog');
+    private function prepareData(string $key, $arr, Request $request): void {
+        $this->enrichData($key, $arr);
+        $arr['time'] ??= static::currentTS();
+        $arr['route'] ??= $request->route() !== NULL ? $request->route()->uri() : $request->path();
+        $arr['method'] ??= $request->getMethod();
+        $arr['reqId'] ??= $this->requestId;
+        $this->output->prepareData($key, $arr);
     }
 
-    private function getEnrichedData(string $type, array $json): array {
+    private function enrichData(string $type, array &$data): void {
         $enricherClasses = config("laralog.enrichers.$type");
 
-        if(is_array($enricherClasses) && count($enricherClasses) && is_array($enrichers = config("laralog.enrichers.$type"))) {
+        if(is_array($enricherClasses) && count($enricherClasses) && is_array($enricherClasses)) {
             // run registered enrichers
-            foreach($enrichers as $enricherClass) {
+            foreach($enricherClasses as $enricherClass => $enricherClassOrConfig) {
                 try {
+                    $enricherArgs = [];
+
+                    // class could be the value
+                    // class could be the key with constuctor args as values
+                    if(is_array($enricherClassOrConfig)) {
+                        $enricherArgs = $enricherClassOrConfig;
+                    } else {
+                        $enricherClass = $enricherClassOrConfig;
+                    }
+
                     /** @var ILaralogEnricher $enricher */
-                    $enricher = new $enricherClass();
-                    $extraData = $enricher->enrichFrom($json);
-                    $json = array_merge_recursive($json, $extraData);
+                    $enricher = new $enricherClass($enricherArgs);
+                    $enricher->enrichFrom($data);
                 } catch (\Throwable $t) {
-                    // ignore
+                    // ignore because it could cause an endless loop
                 }
             }
         }
 
-        return $json;
     }
 
-    private function registerListeners() {
+    private function registerListeners(): void {
         Event::listen('*', function($eventName, $data) {
-
-            if($this->isSending)
-                return;
 
             $caller = $this->getCaller();
 
@@ -207,32 +169,29 @@ class Logging {
 
             $this->incCounter($eventName);
 
-            if($this->datacollection->get('allevents') === NULL)
-                return;
-
             switch($eventName) {
 
                 // query speichern
-                case 'Illuminate\Database\Events\QueryExecuted':
+                case QueryExecuted::class:
                     $this->saveQuery($data[0]);
                     break;
 
                 // cache abfragen speichern
-                case 'Illuminate\Cache\Events\CacheHit':
-                case 'Illuminate\Cache\Events\CacheMissed':
-                case 'Illuminate\Cache\Events\KeyWritten':
-                case 'Illuminate\Cache\Events\KeyForgotten':
+                case CacheHit::class:
+                case CacheMissed::class:
+                case KeyWritten::class:
+                case KeyForgotten::class:
                     $this->incCounter('cache'); // sum of all Cache-Events
-                    $this->datacollection->get('cacheevents')->push([
-                        'time' => self::currentTS(),
+                    static::$datacollection[static::KEY_CACHEEVENT][] = [
+                        'time' => static::currentTS(),
                         'caller' => $caller,
                         'event' => $eventName,
                         'key' => $data[0]->key
-                    ]);
+                    ];
                     break;
 
                 // ignorieren
-                case 'Illuminate\Database\Events\StatementPrepared':
+                case StatementPrepared::class:
                 case 'OwenIt\Auditing\Events\Auditing':
                 case 'eloquent.booting':
                 case 'eloquent.retrieved':
@@ -248,143 +207,144 @@ class Logging {
                 case 'composing':
                     break;
 
-                case 'OwenIt\Auditing\Events\Audited':
-                    $this->datacollection->get('allevents')->push([
-                        'time' => self::currentTS(),
-                        'caller' => $caller,
-                        'event' => $eventName,
-                        'eventorig' => $eventNameOrig,
-                        'data'  => [
-                            'user' => ['id' => $data[0]->audit->user_id],
-                            'auditable_type' => $data[0]->audit->auditable_type,
-                            'auditable_id' => $data[0]->audit->auditable_id,
-                            'event' => $data[0]->audit->event,
-                            'ip_address' => $data[0]->audit->ip_address,
-                        ],
-                    ]);
-                    break;
-
-                case 'Illuminate\Auth\Events\Authenticated':
-                case 'App\Events\ApplicationCreatedEvent':
-
+                case Authenticated::class:
+                case \App\Events\ApplicationCreatedEvent::class:
                     $esData = [];
 
-                    if(isset($data[0]->user))
+                    if(isset($data[0]->user)) {
                         $esData['user'] = $data[0]->user->only(['id']);
+                    }
 
-                    if(isset($data[0]->event))
+                    if(isset($data[0]->event)) {
                         $esData['event'] = $data[0]->event->only(['id']);
+                    }
 
-                    if(isset($data[0]->application))
+                    if(isset($data[0]->application)) {
                         $esData['application'] = $data[0]->application->only(['id', 'eventtimes_id', 'type']);
+                    }
 
-                    $this->datacollection->get('allevents')->push([
-                        'time' => self::currentTS(),
+                    static::$datacollection[static::KEY_EVENT][] = [
+                        'time' => static::currentTS(),
                         'caller' => $caller,
                         'event' => $eventName,
                         'eventorig' => $eventNameOrig,
                         'data'  => $esData,
-                    ]);
+                    ];
                     break;
 
                 // benötigt als info für sql abfragen
                 case 'eloquent.booted':
-                    $this->datacollection->put('lastmodel', get_class($data[0]));
+                    // TODO ?????
+//                    $this->datacollection->put('lastmodel', get_class($data[0]));
+                    static::$datacollection['lastmodel'] = get_class($data[0]);
                     break;
 
-                default:
-                    $this->datacollection->get('allevents')->push([
-                        'time' => self::currentTS(),
+                case MessageLogged::class:
+                    static::$datacollection[static::KEY_LOG][] = [
+                        'time' => static::currentTS(),
+                        'caller' => $caller,
+                        'data'  => $data[0],
+                    ];
+                    break;
+
+                case RouteMatched::class:
+                    static::$datacollection[static::KEY_EVENT][] = [
+                        'time' => static::currentTS(),
                         'caller' => $caller,
                         'event' => $eventName,
                         'eventorig' => $eventNameOrig,
-                        // 'data'  => $data[0],
+                        'key'  => $data[0]->request->getPathinfo(),
+                    ];
+                    break;
+
+                default:
+                    static::$datacollection[static::KEY_EVENT][] = [
+                        'time' => static::currentTS(),
+                        'caller' => $caller,
+                        'event' => $eventName,
+                        'eventorig' => $eventNameOrig,
                         'key' => $key
-                    ]);
+                    ];
             }
         });
     }
 
-    private function incCounter($name) {
-        $old = $this->datacollection->get('counter')->get($name) ?? 0;
-        $this->datacollection->get('counter')->put($name, $old + 1);
+    private function incCounter($name, int $amount = 1): void {
+        static::$datacollection[static::KEY_STAT] ??= [];
+        static::$datacollection[static::KEY_STAT]['counter'] ??= [];
+        static::$datacollection[static::KEY_STAT]['counter'][$name] ??= 0;
+        static::$datacollection[static::KEY_STAT]['counter'][$name] += $amount;
     }
 
-    private function saveQuery($data) {
-        $this->datacollection->get('sql')->push([
-            'time'         => self::currentTS(),
-            'sql'          => $data->sql,
-            'bindingsorig' => array_map(fn($v) => (string)$v, $data->bindings ?? []) ?? [],
+    private function saveQuery($data): void {
+        static::$datacollection[static::KEY_SQL][] = [
+            'time'         => static::currentTS(),
+            'query'        => $data->sql,
+            'bindingsorig' => array_map(static fn($v) => (string) $v, $data->bindings ?? []) ?? [],
             'queryType'    => strtoupper(Arr::first(explode(' ', $data->sql))),
-            'duration'     => floatval($data->time),
+            'duration'     => (float) $data->time,
             'caller'       => $this->getCaller(),
-            'model'        => $this->datacollection->get('lastmodel'),
-            'hash'         => $this->datacollection->get('hash'),
-        ]);
+            'model'        => static::$datacollection['lastmodel'] ?? '-',
+        ];
     }
 
-    private function saveRequestToSingleton(Request $request) {
-        $req = $this->datacollection->get('request');
+    private function saveRequest(Request $request): void {
+        static::$datacollection[static::KEY_REQUEST] = [
+            'host'    => $request->getHttpHost(),
+            'uri'     => $request->server('REQUEST_URI'),
+            'method'  => $request->getMethod(),
+            'headers' => Arr::only($this->headersToArray($request->headers), [
+                'host', 'user-agent', 'accept', 'content-type'
+            ]),
+            'ip' => $request->header('X-Forwarded-For') ?? $request->getClientIp(),
+        ];
 
-        if(Auth::user() != null) {
-            $req->put('user', [
+        if(Auth::user() !== null) {
+            static::$datacollection[static::KEY_REQUEST]['user'] = [
                 'id'       => $request->user()->id,
                 'username' => $request->user()->username,
-            ]);
+            ];
         }
+    }
 
-        $req->put('host', $request->getHttpHost());
-        $req->put('uri', $request->server('REQUEST_URI'));
-        $req->put('route', $request->route() !== NULL ? $request->route()->uri() : 'unknown');
-        $req->put('method', $request->getMethod());
-        $req->put('headers', Arr::only($this->headersToArray($request->headers), ['host', 'user-agent']));
-        $req->put('ip', $request->header('X-Forwarded-For') ?? $request->getClientIp());
+    private function saveResponse(Response $response): void {
+        static::$datacollection[static::KEY_RESPONSE] = [
+            'time'   => static::currentTS(),
+            'status' => $response->getStatusCode(),
+            'bytes'  => mb_strlen($response->getContent()),
+        ];
+    }
+
+    private function saveStats(): void {
+        static::$datacollection[static::KEY_STAT]['memory'] = ['peak' => memory_get_peak_usage(true)];
+
+        if(array_key_exists(static::KEY_SQL, static::$datacollection)) {
+            static::$datacollection[static::KEY_STAT][static::KEY_SQL] = [
+                'count' => count(static::$datacollection[static::KEY_SQL]),
+                'totalTime' => array_reduce(static::$datacollection[static::KEY_SQL], static fn($sumMs, $sql) => $sql['duration'] + $sumMs, 0),
+            ];
+        }
     }
 
     private function cleanUpCollectionAndGet($key) {
-        if($this->datacollection->has('all')) {
-            $all = $this->datacollection->get('all');
-            if($all->count() > 0)
-                Log::info("unhandled events: ".$all);
-        }
-
-        $this->datacollection->forget('lastmodel');
-        $this->datacollection->forget('all');
-
-        $data = $this->datacollection->get($key);
-        $this->datacollection->forget($key);
-
-        // gemeinsame Werte überall hin kopieren
-        return $data->map(function($obj) {
-            $obj['hash']    = $this->datacollection->get('hash');
-            $obj['appname'] = $this->datacollection->get('appname');
-            $obj['appurl']  = $this->datacollection->get('appurl');
-            $obj['appenv'] = $this->datacollection->get('appenv');
-            $obj['appdebug']  = $this->datacollection->get('appdebug');
-            $obj['request'] = [
-                'uri'    => $this->datacollection->get('request')->get('uri'),
-                'host'   => $this->datacollection->get('request')->get('host'),
-                'route'  => $this->datacollection->get('request')->get('route'),
-                'method' => $this->datacollection->get('request')->get('method'),
-                'user'   => $this->datacollection->get('request')->get('user'),
-            ];
-            return $obj;
-        })->toArray();
+        $data = static::$datacollection[$key] ?? [];
+        unset(static::$datacollection[$key]);
+        return $data;
     }
 
     /**
-     * @param \Symfony\Component\HttpFoundation\HeaderBag $headers
+     * @param HeaderBag $headers
      * @return array
      */
-    private function headersToArray($headers) {
+    private function headersToArray(HeaderBag $headers): array {
         $ret = [];
         foreach($headers->getIterator() as $key => $value) {
-            $ret = array_merge($ret, [$key => $value[0]]);
+            $ret[$key] = $value[0];
         }
         return $ret;
     }
 
-    public function getCaller() {
+    public function getCaller(): array {
         return Arr::except((array) $this->getBacktrace()->first(function($trace) {
             if(empty($trace->file))
                 return false;
@@ -402,9 +362,47 @@ class Logging {
         }), ['object']);
     }
 
-    private function getBacktrace() {
+    private function getBacktrace(): \Illuminate\Support\Collection {
         return collect(debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT | DEBUG_BACKTRACE_IGNORE_ARGS))->map(function($a) {
             return (object) $a;
         });
+    }
+
+    private function setupOutputs(): void {
+        $outputType = config("laralog.output");
+
+        // $outputType '\PKeidel\Laralog\Outputs\ElasticsearchOutput'
+        if (is_string($outputType)) {
+            $outputType = [$outputType];
+        }
+
+        // $outputType ['\PKeidel\Laralog\Outputs\ElasticsearchOutput', '..']
+        // $outputType ['\PKeidel\Laralog\Outputs\ElasticsearchOutput' => [ .. config .. ]]
+        foreach ($outputType as $outputClass => $outputConfig) {
+            if (is_numeric($outputClass)) {
+                // there is only the class and no config
+                $outputClass = $outputConfig;
+                $outputConfig = [];
+            }
+
+            if (!class_exists($outputClass)) {
+                Log::alert("Laralog::Logging Output '$outputClass' is not known. Data can not be logged.");
+                continue;
+            }
+
+            $this->output->add(new $outputClass($outputConfig));
+        }
+    }
+
+    public static function reportThrowable(\Throwable $throwable, array $extraData = []): void {
+        static::$datacollection ??= [];
+        static::$datacollection[static::KEY_ERROR][] = [
+            'time'      => static::currentTS(),
+            'exception' => get_class($throwable),
+            'message'   => $throwable->getMessage(),
+            'file'      => $throwable->getFile(),
+            'line'      => $throwable->getLine(),
+            'route'     => optional(request()->route())->uri() ?? 'unknown',
+        ] + $extraData;
     }
 }
