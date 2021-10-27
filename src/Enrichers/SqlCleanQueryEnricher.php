@@ -2,7 +2,6 @@
 
 namespace PKeidel\Laralog\Enrichers;
 
-
 class SqlCleanQueryEnricher implements ILaralogEnricher {
 
     /**
@@ -11,10 +10,9 @@ class SqlCleanQueryEnricher implements ILaralogEnricher {
      *  - Select * from users where id = ?   =>  SELECT * FROM users WHERE id = ?
      *  - Select * from users where id IN (?, ?, ?)   =>  SELECT * FROM users WHERE id IN (?)
      * @param array $data
-     * @return array
      */
-    public function enrichFrom(array $data): array {
-        $query = preg_replace("/('[^']+')/", '?', $data['sql']);   // replace strings
+    public function enrichFrom(array &$data): void {
+        $query = preg_replace("/('[^']+')/", '?', $data['query']);   // replace strings
         $query = preg_replace("/([0-9][0-9.]+)/", '?', $query);    // replace decimal numbers
         $query = preg_replace("/([0-9]+)/", '?', $query);    // replace numbers
         $query = preg_replace("/[iI][nN] \((?:\?,? ?)+\)/", 'in (?)', $query);
@@ -23,12 +21,8 @@ class SqlCleanQueryEnricher implements ILaralogEnricher {
             $query = preg_replace("/$keyword/", strtoupper($keyword), $query);
         }
 
-        return [
-            'enriched' => [
-                'cleanQuery' => [
-                    'query' => $query,
-                ]
-            ]
-        ];
+        $data['enriched'] ??= [];
+        $data['enriched']['cleanQuery'] ??= [];
+        $data['enriched']['cleanQuery']['query'] = $query;
     }
 }

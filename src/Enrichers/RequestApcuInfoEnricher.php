@@ -2,40 +2,31 @@
 
 namespace PKeidel\Laralog\Enrichers;
 
-
 class RequestApcuInfoEnricher implements ILaralogEnricher {
 
     /**
      * Adds some apcu information to the request objects
      * @param array $data
-     * @return array
      */
-    public function enrichFrom(array $data): array {
+    public function enrichFrom(array &$data): void {
 
         $installed = function_exists('apcu_cache_info');
 
-        $dataObj = [
-            'enriched' => [
-                'opcache' => [
-                    'installed' => $installed,
-                ]
-            ]
-        ];
+        $data['enriched'] ??= [];
+        $data['enriched']['apcu'] ??= [];
+        $data['enriched']['apcu']['installed'] = $installed;
 
         if(!$installed) {
-            return $dataObj;
+            return;
         }
 
-        $dataObj['enriched']['apcu']['enabled'] = apcu_enabled();
+        $data['enriched']['apcu']['enabled'] = apcu_enabled();
 
         $info = apcu_cache_info();
 
         if(is_array($info)) {
-            unset($info['cache_list']);
-            unset($info['slot_distribution']);
-            $dataObj['enriched']['apcu']['info'] = $info;
+            unset($info['cache_list'], $info['slot_distribution']);
+            $data['enriched']['apcu']['info'] = $info;
         }
-
-        return $dataObj;
     }
 }

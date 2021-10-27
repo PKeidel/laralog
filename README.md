@@ -24,12 +24,14 @@ LARALOG_ES_HOST=https://es01.example.com
 LARALOG_ES_INDEX=myindex
 LARALOG_ES_USERNAME=abcdefghi
 LARALOG_ES_PASSWORD=!top5scr3t!
+LARALOG_ES_VERIFYSSL=true
+LARALOG_ES_PIPELINE=ipgeo
 ```
 
 Or get the config/laralog.php file and modify it there.
 For example to  
 ```bash
-php artisan vendor:publish --tag=config --provider="PKeidel\Laralog\LaralogServiceProvider"```
+artisan vendor:publish --tag=config --provider="PKeidel\Laralog\LaralogServiceProvider"
 ```
 
 
@@ -51,9 +53,17 @@ $pklaralog->get('errors')->push([
 ]);
 ```
 
+## Outputs
+
+### Elasticsearch
+Create index template:
+
+    artisan vendor:publish --tag=es-template --provider="PKeidel\Laralog\LaralogServiceProvider"
+    artisan laralog:es:install
+
 ## Example Kibana visualisations
 ### Requests per route
-![asdf](img/01_requests_per_route.png)
+![01_requests_per_route](img/01_requests_per_route.png)
 
 ## License
 
