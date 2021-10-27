@@ -15,6 +15,10 @@ class LaralogServiceProvider extends ServiceProvider {
                 __DIR__.'/../config/config.php' => config_path('laralog.php'),
             ], 'config');
 
+            $this->publishes([
+                __DIR__.'/../assets/es-mapping.json' => config_path('laralog-es-mapping.json'),
+            ], 'es-template');
+
             // Registering package commands.
             $this->commands([
                 LaralogInstallElasticsearch::class

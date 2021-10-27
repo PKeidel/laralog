@@ -11,28 +11,50 @@ return [
 
     // supported:
     'enrichers' => [
-        'sql' => [
+        \PKeidel\Laralog\Middleware\Logging::KEY_SQL => [
             PKeidel\Laralog\Enrichers\SqlCleanQueryEnricher::class,
-            PKeidel\Laralog\Enrichers\SqlFilledQueryEnricher::class,
+//            PKeidel\Laralog\Enrichers\SqlFilledQueryEnricher::class,
         ],
-        'request' => [
-            PKeidel\Laralog\Enrichers\RequestOpcacheInfoEnricher::class,
+        \PKeidel\Laralog\Middleware\Logging::KEY_REQUEST => [
+            PKeidel\Laralog\Enrichers\RequestOpcacheInfoEnricher::class => [
+                'directives' => [
+                    'opcache.enable',
+                    'opcache.memory_consumption',
+                    'opcache.max_accelerated_files',
+                    'opcache.revalidate_freq',
+                ]
+            ],
             PKeidel\Laralog\Enrichers\RequestApcuInfoEnricher::class,
         ],
-        'stats' => [],
-        'errors' => [],
-        'cacheevents' => [],
+        \PKeidel\Laralog\Middleware\Logging::KEY_RESPONSE => [],
+        \PKeidel\Laralog\Middleware\Logging::KEY_STAT => [],
+        \PKeidel\Laralog\Middleware\Logging::KEY_ERROR => [],
+        \PKeidel\Laralog\Middleware\Logging::KEY_CACHEEVENT => [],
+        \PKeidel\Laralog\Middleware\Logging::KEY_EVENT => [],
+        \PKeidel\Laralog\Middleware\Logging::KEY_LOG => [],
     ],
 
+//    'output' => [\PKeidel\Laralog\Outputs\ElasticsearchOutput::class],
     'output' => [
-        'type' => 'elasticsearch',
+        \PKeidel\Laralog\Outputs\ElasticsearchOutput::class => [
+//            'only' => [
+//                \PKeidel\Laralog\Middleware\Logging::KEY_REQUEST,
+//                \PKeidel\Laralog\Middleware\Logging::KEY_SQL,
+//            ],
+        ]
     ],
 
     'elasticsearch' => [
         'url' => env('LARALOG_ES_HOST'),
-        'index' => env('LARALOG_ES_INDEX'),
+        'index' => static fn() => 'laralog-' . date('Y-m'),
         'username' => env('LARALOG_ES_USERNAME'),
         'password' => env('LARALOG_ES_PASSWORD'),
+        'verifyssl' => env('LARALOG_ES_VERIFYSSL'),
         'pipeline' => env('LARALOG_ES_PIPELINE'),
-    ]
+    ],
+
+    'telegraf' => [
+        'host' => env('LARALOG_TG_HOST'),
+        'port' => env('LARALOG_TG_PORT'),
+    ],
 ];
