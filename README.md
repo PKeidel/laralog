@@ -16,6 +16,11 @@ You can install the package via composer:
 composer require pkeidel/laralog
 ```
 
+Add the middleware to your ./app/Http/Kernel.php:
+```php
+\PKeidel\Laralog\Middleware\Logging::class,
+```
+
 ## Configuration
 Add these values to your .env file:
 ```bash
@@ -32,6 +37,11 @@ Or get the config/laralog.php file and modify it there.
 For example to  
 ```bash
 artisan vendor:publish --tag=config --provider="PKeidel\Laralog\LaralogServiceProvider"
+```
+
+Optional: Send request direct (not in `terminate()`):
+```
+config/laralog.php: 'sendlater' => false,
 ```
 
 
