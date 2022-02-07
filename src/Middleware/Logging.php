@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use PKeidel\Laralog\Enrichers\ILaralogEnricher;
-use PKeidel\Laralog\Outputs\IOutput;
 use PKeidel\Laralog\Outputs\OutputManager;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Auth\Events\Authenticated;
@@ -26,7 +25,7 @@ use Symfony\Component\HttpFoundation\HeaderBag;
 class Logging {
 
     private string $requestId;
-    private IOutput $output;
+    private OutputManager $output;
     private bool $sendLater;
 
     public const KEY_SQL = 'sql';
